@@ -1,4 +1,3 @@
-
 const express = require("express");
 const cors = require("cors");
 const bodyparser = require("body-parser");
@@ -15,7 +14,6 @@ const ai = new GoogleGenAI({
   apiKey: "AIzaSyCDDIXRidwq9ootdag1hzSgvKySXQYNMhQ",
 });
 
-
 const upload = multer({ storage: multer.memoryStorage() });
 
 app.post("/extract", upload.single("pdf"), async (req, res) => {
@@ -25,8 +23,14 @@ app.post("/extract", upload.single("pdf"), async (req, res) => {
     const file = req.file;
 
     if (file && question) {
-      const data = await pdf(file.buffer);
-      prompt = data.text + "\n" + question;
+      await pdf(file.buffer)
+      .then((data) => {
+        prompt = data.text + "\n " + question;
+      })
+      .catch((err) => {
+        res.status(500).json({ error: err.message });
+      });
+
     } else if (file) {
       const data = await pdf(file.buffer);
       prompt = data.text;
@@ -35,8 +39,11 @@ app.post("/extract", upload.single("pdf"), async (req, res) => {
     }
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
-      contents: prompt+'write question before answering with ques number like que 1. what is ... then next line ans:- do not give preemption just answer from 1 st line alse dont use text like )(}{:;"',
+      contents:
+        prompt +
+        'write question before answering with ques number like que 1. what is ... then next line ans:- do not give preemption just answer from 1 st line ',
     });
+    
     res.json({ text: response.text });
   } catch (err) {
     res.status(500).json({ error: err.message });
